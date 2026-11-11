@@ -1,0 +1,73 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RK RAJA XWD</title>
+<style>
+* { box-sizing:border-box; }
+body {
+    margin:0;
+    background:#080808;
+    color:white;
+    font-family:Arial,sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+.panel {
+    width:90%;
+    max-width:420px;
+    padding:28px;
+    background:#151515;
+    border:1px solid #d71920;
+    border-radius:18px;
+    text-align:center;
+    box-shadow:0 0 25px #65000055;
+}
+h1 { color:#ff3030; }
+p { color:#aaa; }
+.login {
+    display:block;
+    padding:15px;
+    margin-top:22px;
+    border-radius:9px;
+    background:#1877f2;
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+}
+.logout {
+    display:inline-block;
+    color:#ff5555;
+    margin-top:20px;
+}
+a { word-break:break-word; }
+</style>
+</head>
+<body>
+<div class="panel">
+    <h1>👑 RK RAJA XWD</h1>
+    <h3>FACEBOOK LOGIN</h3>
+
+    {% if user %}
+        <h2>Welcome!</h2>
+        <p>{{ user.name }}</p>
+        <p>Facebook ID: {{ user.id }}</p>
+        <p>Login successful.</p>
+        <a class="logout" href="/logout">Logout</a>
+    {% else %}
+        <p>Continue using official Facebook authorization.</p>
+        <a class="login" href="/login">
+            Continue with Facebook
+        </a>
+    {% endif %}
+
+    <p>
+      <a href="/privacy">Privacy Policy</a> |
+      <a href="/data-deletion">Data Deletion</a>
+    </p>
+</div>
+</body>
+</html>
