@@ -1,79 +1,94 @@
-
 import os
 import secrets
 import requests
 
-from flask import (
-    Flask, redirect, request, session,
-    render_template, url_for
-)
+from flask import Flask, redirect, request, session, render_template_string
 
 app = Flask(__name__)
-
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 
 APP_ID = os.environ["META_APP_ID"]
 APP_SECRET = os.environ["META_APP_SECRET"]
 REDIRECT_URI = os.environ["META_REDIRECT_URI"]
-GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v27.0")
 
-AUTH_URL = "https://www.facebook.com/" + GRAPH_VERSION + "/dialog/oauth"
-TOKEN_URL = "https://graph.facebook.com/" + GRAPH_VERSION + "/oauth/access_token"
-
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=True,
-    SESSION_COOKIE_SAMESITE="Lax"
-)
-
+PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RK RAJA XWD</title>
+<style>
+body {
+ background:#090909;color:white;
+ font-family:Arial;text-align:center;
+ padding:35px 15px;
+}
+.box {
+ max-width:400px;margin:auto;
+ background:#171717;padding:25px;
+ border:1px solid red;border-radius:15px;
+}
+h1 {color:#ff3030}
+button {
+ background:#1877f2;color:white;
+ border:0;padding:15px;width:100%;
+ border-radius:8px;font-weight:bold;
+}
+a {color:#ff5555}
+</style>
+</head>
+<body>
+<div class="box">
+<h1>👑 RK RAJA XWD</h1>
+<h3>FACEBOOK LOGIN</h3>
+{% if user %}
+<h2>Welcome {{user.name}}</h2>
+<p>Facebook login successful.</p>
+<a href="/logout">Logout</a>
+{% else %}
+<p>Continue with official Facebook authorization.</p>
+<a href="/login"><button>Continue with Facebook</button></a>
+{% endif %}
+</div>
+</body>
+</html>
+"""
 
 @app.route("/")
 def home():
-    return render_template(
-        "index.html",
-        user=session.get("user")
-    )
-
+    return render_template_string(PAGE, user=session.get("user"))
 
 @app.route("/login")
 def login():
+    from urllib.parse import urlencode
     state = secrets.token_urlsafe(32)
-    session["oauth_state"] = state
+    session["state"] = state
 
+    url = "https://www.facebook.com/v27.0/dialog/oauth?"
     params = {
         "client_id": APP_ID,
         "redirect_uri": REDIRECT_URI,
         "state": state,
-        "response_type": "code",
-        "scope": "public_profile"
+        "scope": "public_profile",
+        "response_type": "code"
     }
-
-    from urllib.parse import urlencode
-    return redirect(AUTH_URL + "?" + urlencode(params))
-
+    return redirect(url + urlencode(params))
 
 @app.route("/callback")
 def callback():
-    error = request.args.get("error")
-    if error:
-        return "Facebook login cancelled or denied.", 400
-
     code = request.args.get("code")
     state = request.args.get("state")
 
     if not code or not state:
-        return "Missing authorization response.", 400
+        return "Login cancelled or failed", 400
 
-    saved_state = session.pop("oauth_state", None)
-
-    if not saved_state or not secrets.compare_digest(
-        state, saved_state
-    ):
-        return "Invalid login state.", 400
+    saved = session.pop("state", None)
+    if not saved or not secrets.compare_digest(state, saved):
+        return "Invalid state", 400
 
     try:
         response = requests.get(
-            TOKEN_URL,
+            "https://graph.facebook.com/v27.0/oauth/access_token",
             params={
                 "client_id": APP_ID,
                 "client_secret": APP_SECRET,
@@ -83,15 +98,13 @@ def callback():
             timeout=15
         )
         response.raise_for_status()
-        short_token = response.json()["access_token"]
+        token = response.json()["access_token"]
 
-        # Use token only to fetch the authorized basic profile.
-        # Do not save or display the access token.
         profile = requests.get(
-            f"https://graph.facebook.com/{GRAPH_VERSION}/me",
+            "https://graph.facebook.com/v27.0/me",
             params={
                 "fields": "id,name",
-                "access_token": short_token
+                "access_token": token
             },
             timeout=15
         )
@@ -99,37 +112,15 @@ def callback():
 
         session.clear()
         session["user"] = profile.json()
+        return redirect("/")
 
-        return redirect(url_for("home"))
-
-    except (requests.RequestException, KeyError, ValueError):
-        return "Facebook authentication failed.", 400
-
+    except requests.RequestException:
+        return "Facebook authorization failed", 400
 
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("home"))
-
-
-@app.route("/privacy")
-def privacy():
-    return """
-    <h1>Privacy Policy - RK RAJA XWD</h1>
-    <p>We use Facebook Login for authentication.</p>
-    <p>We do not sell or publicly share login credentials.</p>
-    <p>Users can log out and request account data deletion.</p>
-    """
-
-
-@app.route("/data-deletion")
-def data_deletion():
-    return """
-    <h1>Data Deletion</h1>
-    <p>Contact the website administrator to request deletion
-    of data associated with your login.</p>
-    """
-
+    return redirect("/")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
