@@ -1,18 +1,7 @@
-
 services:
   - type: web
-    name: rk-raja-facebook-login
+    name: rk-raja-fb-token
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
-    envVars:
-      - key: FLASK_SECRET_KEY
-        generateValue: true
-      - key: META_APP_ID
-        sync: false
-      - key: META_APP_SECRET
-        sync: false
-      - key: META_REDIRECT_URI
-        sync: false
-      - key: META_GRAPH_VERSION
-        value: v27.0
